@@ -207,6 +207,78 @@ body,
     background: #2563eb;
 }
 
+.YouTubeToMidi input[type='url'] {
+    width: 240px;
+    max-width: 100%;
+    padding: 4px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: #0b1220;
+    color: #ffffff;
+    font-size: 12px;
+}
+
+.youtube-to-midi-row,
+.youtube-to-midi-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.youtube-to-midi-row button,
+.youtube-to-midi-actions button {
+    padding: 4px 9px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 6px;
+    background: #1f2937;
+    color: #ffffff;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.youtube-to-midi-row button:hover,
+.youtube-to-midi-actions button:hover {
+    background: #334155;
+}
+
+.youtube-to-midi-row button:disabled,
+.youtube-to-midi-actions button:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.youtube-to-midi-hint {
+    max-width: 280px;
+    margin-top: 4px;
+    color: #94a3b8;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.youtube-to-midi-title {
+    max-width: 280px;
+    margin-top: 4px;
+    overflow: hidden;
+    color: #cbd5e1;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.youtube-recording-time {
+    color: #f87171;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.youtube-to-midi-warning {
+    margin-top: 4px;
+    color: #fbbf24;
+    font-size: 11px;
+}
+
 /* 메인 화면 우측 하단 QR 코드 */
 .qr-code {
     position: fixed;
