@@ -4,7 +4,6 @@ import Info from './Info';
 import MidiSelector from './MidiSelector';
 import SoundFontSelector from './SoundFontSelector';
 import TrackController from './TrackController';
-import YouTubeToMidi from './YouTubeToMidi';
 
 export default function TopMenu({ defaultOpen = false }) {
     const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -26,7 +25,6 @@ export default function TopMenu({ defaultOpen = false }) {
                     <div className="top-menu-selectors">
                         <MidiSelector />
                         <AudioToMidiUploader />
-                        <YouTubeToMidi />
                         <SoundFontSelector />
                     </div>
                     <TrackController />

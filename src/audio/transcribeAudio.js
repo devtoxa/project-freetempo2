@@ -181,18 +181,6 @@ export function transcribeSamples(samples, options = {}) {
     });
 }
 
-export function getAudioRms(samples) {
-    if (!samples?.length) return 0;
-
-    let sum = 0;
-
-    for (let i = 0; i < samples.length; i += 1) {
-        sum += samples[i] * samples[i];
-    }
-
-    return Math.sqrt(sum / samples.length);
-}
-
 export const audioToMidiConfig = {
     TARGET_SAMPLE_RATE,
     MAX_AUDIO_SECONDS,

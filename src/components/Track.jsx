@@ -148,6 +148,7 @@ const Track = () => {
         startAudioSec: 0,
         startSongTime: 0,
     });
+    const hiddenPlaybackRef = useRef(null);
 
     const callbacksRef = useRef({
         playGroup: null,
@@ -600,6 +601,100 @@ const Track = () => {
         setStoreCurrentStep,
     ]);
 
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            const now = Tone.now();
+
+            if (document.hidden) {
+                if (!autoPlayRef.current.active) {
+                    hiddenPlaybackRef.current = null;
+                    return;
+                }
+
+                hiddenPlaybackRef.current = {
+                    songTime:
+                        autoPlayRef.current.startSongTime +
+                        Math.max(
+                            now - autoPlayRef.current.startAudioSec,
+                            0
+                        ),
+                    at: now,
+                };
+                return;
+            }
+
+            const hidden = hiddenPlaybackRef.current;
+            hiddenPlaybackRef.current = null;
+
+            if (!hidden || !autoPlayRef.current.active) return;
+            if (!noteGroups.length) return;
+
+            const resumeSongTime =
+                hidden.songTime + Math.max(now - hidden.at, 0);
+            let idx = Math.min(
+                Math.max(stepRef.current, 0),
+                noteGroups.length
+            );
+
+            while (idx < noteGroups.length) {
+                const groupTime =
+                    noteGroups[idx]?.[0]?.time ?? Infinity;
+
+                if (groupTime > resumeSongTime) break;
+
+                idx += 1;
+            }
+
+            if (idx >= noteGroups.length) {
+                autoPlayRef.current.active = false;
+                stopAutoPlay?.();
+                stepRef.current = 0;
+                setCurrentStep(0);
+                setPlayingStep(0);
+                setStoreCurrentStep(0);
+                renderStateRef.current.activeFocusTime = 0;
+                renderStateRef.current.displayCursorTime = 0;
+                return;
+            }
+
+            autoPlayRef.current.startSongTime = resumeSongTime;
+            autoPlayRef.current.startAudioSec = now;
+            stepRef.current = idx;
+
+            const renderState = renderStateRef.current;
+            const pxPerSec =
+                (renderState.bpm / 60) * renderState.pixelsPerBeat;
+            const innerWidth = Math.max(
+                sizeRef.current.width - PADDING_X * 2,
+                1
+            );
+            const anchorSec =
+                (innerWidth * FOCUS_ANCHOR_RATIO) /
+                Math.max(pxPerSec, 1);
+
+            renderState.activeFocusTime =
+                noteGroups[idx]?.[0]?.time ?? resumeSongTime;
+            renderState.displayCursorTime = Math.max(
+                resumeSongTime - anchorSec,
+                0
+            );
+            setCurrentStep(idx);
+            setStoreCurrentStep(idx);
+        };
+
+        document.addEventListener(
+            'visibilitychange',
+            handleVisibilityChange
+        );
+
+        return () => {
+            document.removeEventListener(
+                'visibilitychange',
+                handleVisibilityChange
+            );
+        };
+    }, [noteGroups, stopAutoPlay, setStoreCurrentStep]);
+
     // Canvas 크기 감지
     useEffect(() => {
         const element = viewportRef.current;
@@ -790,6 +885,8 @@ const Track = () => {
 
             const pxPerSec = (state.bpm / 60) * state.pixelsPerBeat;
 
+            let autoPlaySongTime = null;
+
             if (
                 autoPlayRef.current.active &&
                 state.noteGroups.length > 0
@@ -801,6 +898,8 @@ const Track = () => {
                 );
                 const songTime =
                     autoPlayRef.current.startSongTime + elapsedSec;
+
+                autoPlaySongTime = songTime;
 
                 let idx = stepRef.current % state.noteGroups.length;
                 let triggered = false;
@@ -860,18 +959,32 @@ const Track = () => {
             const anchorSec =
                 (innerWidth * FOCUS_ANCHOR_RATIO) /
                 Math.max(pxPerSec, 1);
-            const focusTarget =
-                focusTime != null
-                    ? Math.max(focusTime - anchorSec, 0)
-                    : state.targetCursorTime;
-            const focusAlpha =
-                1 - Math.exp(-dtMs / FOCUS_SMOOTHING_MS);
 
-            state.displayCursorTime +=
-                (focusTarget - state.displayCursorTime) * focusAlpha;
+            if (
+                autoPlayRef.current.active &&
+                autoPlaySongTime != null
+            ) {
+                state.displayCursorTime = Math.max(
+                    autoPlaySongTime - anchorSec,
+                    0
+                );
+            } else {
+                const focusTarget =
+                    focusTime != null
+                        ? Math.max(focusTime - anchorSec, 0)
+                        : state.targetCursorTime;
+                const focusAlpha =
+                    1 - Math.exp(-dtMs / FOCUS_SMOOTHING_MS);
 
-            if (Math.abs(focusTarget - state.displayCursorTime) < 0.0005) {
-                state.displayCursorTime = focusTarget;
+                state.displayCursorTime +=
+                    (focusTarget - state.displayCursorTime) * focusAlpha;
+
+                if (
+                    Math.abs(focusTarget - state.displayCursorTime) <
+                    0.0005
+                ) {
+                    state.displayCursorTime = focusTarget;
+                }
             }
 
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
