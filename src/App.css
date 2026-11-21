@@ -260,14 +260,85 @@ body,
 
 .youtube-to-midi-stop {
     min-width: 112px;
-    border-color: rgba(252, 165, 165, 0.7);
+    padding: 6px 14px;
+    border: 1px solid rgba(252, 165, 165, 0.7);
+    border-radius: 8px;
     background: #b91c1c;
+    color: #ffffff;
+    font-size: 13px;
     font-weight: 600;
+    cursor: pointer;
     animation: youtube-rec-pulse 1.2s ease-out infinite;
 }
 
 .youtube-to-midi-stop:hover {
     background: #dc2626;
+}
+
+.youtube-to-midi-cancel {
+    padding: 6px 12px;
+    border: 1px solid rgba(251, 191, 36, 0.6);
+    border-radius: 8px;
+    background: #92400e;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.youtube-to-midi-cancel:hover {
+    background: #b45309;
+}
+
+.youtube-recording-overlay {
+    position: fixed;
+    left: 20px;
+    bottom: 20px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.96);
+    color: #ffffff;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(8px);
+}
+
+.youtube-recording-overlay.is-recording {
+    border-color: rgba(239, 68, 68, 0.55);
+}
+
+.youtube-recording-overlay-text {
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.youtube-recording-overlay-guide {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-width: 300px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.youtube-recording-overlay-guide span {
+    color: #fca5a5;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.youtube-recording-overlay .youtube-recording-bars {
+    height: 28px;
+}
+
+.youtube-recording-overlay .youtube-recording-bars span {
+    width: 5px;
 }
 
 .youtube-to-midi-record.is-processing {

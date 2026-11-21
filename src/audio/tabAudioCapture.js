@@ -116,11 +116,10 @@ export async function startTabAudioCapture(options = {}) {
     try {
         displayStream = await navigator.mediaDevices.getDisplayMedia({
             video: true,
-            audio: {
-                echoCancellation: false,
-                noiseSuppression: false,
-                autoGainControl: false,
-            },
+            audio: true,
+            displaySurface: 'browser',
+            selfBrowserSurface: 'exclude',
+            surfaceSwitching: 'exclude',
             systemAudio: 'include',
         });
     } catch (error) {
