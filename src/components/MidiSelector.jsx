@@ -21,15 +21,15 @@ export default function MidiSelector() {
 
         if (!file) return;
 
-        if (!/\.(mid|midi)$/i.test(file.name)) {
-            setFileError('MIDI 파일(.mid, .midi)만 불러올 수 있습니다.');
+        if (!/\.mid$/i.test(file.name)) {
+            setFileError('MIDI 파일(.mid)만 불러올 수 있습니다.');
             return;
         }
 
         setFileError('');
 
         const blobUrl = URL.createObjectURL(file);
-        const title = file.name.replace(/\.(mid|midi)$/i, '');
+        const title = file.name.replace(/\.mid$/i, '');
 
         useData.getState().addLocalMidi({
             title,
@@ -44,7 +44,7 @@ export default function MidiSelector() {
             <div className="Value">
                 <input
                     type="file"
-                    accept=".mid,.midi,audio/midi,audio/x-midi"
+                    accept=".mid,audio/midi,audio/x-midi"
                     onChange={handleFileChange}
                 />
                 {fileError && (

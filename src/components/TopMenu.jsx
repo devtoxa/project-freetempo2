@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import AudioToMidiUploader from './AudioToMidiUploader';
 import Info from './Info';
 import MidiSelector from './MidiSelector';
 import SoundFontSelector from './SoundFontSelector';
@@ -23,6 +24,7 @@ export default function TopMenu({ defaultOpen = false }) {
                     <Info />
                     <div className="top-menu-selectors">
                         <MidiSelector />
+                        <AudioToMidiUploader />
                         <SoundFontSelector />
                     </div>
                     <TrackController />
