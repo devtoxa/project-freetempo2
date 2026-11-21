@@ -31,40 +31,75 @@ function stopStreamTracks(stream) {
     });
 }
 
-export function isTabAudioCaptureSupported() {
+export function getTabAudioCaptureSupport() {
     if (typeof window === 'undefined' || typeof navigator === 'undefined') {
-        return false;
-    }
-
-    if (typeof window.MediaRecorder === 'undefined') {
-        return false;
-    }
-
-    if (typeof navigator.mediaDevices?.getDisplayMedia !== 'function') {
-        return false;
+        return {
+            supported: false,
+            isMobile: false,
+            reason: '브라우저 환경에서만 사용할 수 있습니다.',
+        };
     }
 
     const userAgent = navigator.userAgent ?? '';
+    const isMobile =
+        /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent) ||
+        (/Macintosh/i.test(userAgent) && navigator.maxTouchPoints > 1);
 
-    if (/Android|iPhone|iPad|iPod|Mobile/i.test(userAgent)) {
-        return false;
+    if (isMobile) {
+        return {
+            supported: false,
+            isMobile: true,
+            reason: '모바일에서는 탭 오디오 캡처를 지원하지 않습니다.',
+        };
     }
 
-    if (/Macintosh/i.test(userAgent) && navigator.maxTouchPoints > 1) {
-        return false;
+    if (window.isSecureContext === false) {
+        return {
+            supported: false,
+            isMobile: false,
+            reason: 'HTTPS 환경에서만 탭 오디오를 녹음할 수 있습니다.',
+        };
+    }
+
+    if (typeof window.MediaRecorder === 'undefined') {
+        return {
+            supported: false,
+            isMobile: false,
+            reason: '이 브라우저는 녹음을 지원하지 않습니다. Chrome/Edge를 사용해 주세요.',
+        };
+    }
+
+    if (typeof navigator.mediaDevices?.getDisplayMedia !== 'function') {
+        return {
+            supported: false,
+            isMobile: false,
+            reason: '이 브라우저는 탭 오디오 캡처를 지원하지 않습니다. Chrome/Edge 데스크톱을 사용해 주세요.',
+        };
     }
 
     if (!/Chrome\//i.test(userAgent) && !/Edg\//i.test(userAgent)) {
-        return false;
+        return {
+            supported: false,
+            isMobile: false,
+            reason: '탭 오디오 캡처는 Chrome/Edge 데스크톱에서만 지원됩니다.',
+        };
     }
 
-    return true;
+    return { supported: true, isMobile: false, reason: '' };
+}
+
+export function isTabAudioCaptureSupported() {
+    return getTabAudioCaptureSupport().supported;
 }
 
 export async function startTabAudioCapture(options = {}) {
     const maxSeconds = options.maxSeconds ?? MAX_RECORDING_SECONDS;
     const onTick =
         typeof options.onTick === 'function' ? options.onTick : () => {};
+    const onLevel =
+        typeof options.onLevel === 'function' ? options.onLevel : () => {};
+    const onStop =
+        typeof options.onStop === 'function' ? options.onStop : () => {};
 
     if (typeof MediaRecorder === 'undefined') {
         throw new Error(
@@ -80,15 +115,12 @@ export async function startTabAudioCapture(options = {}) {
 
     try {
         displayStream = await navigator.mediaDevices.getDisplayMedia({
-            video: { frameRate: 1 },
+            video: true,
             audio: {
                 echoCancellation: false,
                 noiseSuppression: false,
                 autoGainControl: false,
             },
-            displaySurface: 'browser',
-            selfBrowserSurface: 'exclude',
-            surfaceSwitching: 'exclude',
             systemAudio: 'include',
         });
     } catch (error) {
@@ -112,6 +144,7 @@ export async function startTabAudioCapture(options = {}) {
     }
 
     const audioTracks = displayStream.getAudioTracks();
+    const displayTracks = displayStream.getTracks();
 
     if (!audioTracks.length) {
         stopStreamTracks(displayStream);
@@ -119,6 +152,10 @@ export async function startTabAudioCapture(options = {}) {
             "공유 창에서 '탭 오디오 공유'를 체크해야 합니다."
         );
     }
+
+    displayStream.getVideoTracks().forEach((track) => {
+        track.enabled = false;
+    });
 
     const audioStream = new MediaStream(audioTracks);
     const mimeType = getSupportedMimeType();
@@ -131,6 +168,31 @@ export async function startTabAudioCapture(options = {}) {
     } catch {
         stopStreamTracks(displayStream);
         throw new Error('녹음 포맷을 지원하지 않습니다. Chrome/Edge를 사용해 주세요.');
+    }
+
+    let audioContext = null;
+    let analyser = null;
+    let levelBuffer = null;
+
+    try {
+        const AudioContextClass =
+            window.AudioContext || window.webkitAudioContext;
+
+        if (AudioContextClass) {
+            audioContext = new AudioContextClass();
+            const source =
+                audioContext.createMediaStreamSource(displayStream);
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 1024;
+            analyser.smoothingTimeConstant = 0.75;
+            source.connect(analyser);
+            levelBuffer = new Float32Array(analyser.fftSize);
+            audioContext.resume?.().catch(() => {});
+        }
+    } catch {
+        audioContext = null;
+        analyser = null;
+        levelBuffer = null;
     }
 
     const chunks = [];
@@ -168,6 +230,8 @@ export async function startTabAudioCapture(options = {}) {
         if (settled) return;
 
         settled = true;
+        onStop();
+        onLevel(0);
 
         if (timerId !== null) {
             clearInterval(timerId);
@@ -177,7 +241,19 @@ export async function startTabAudioCapture(options = {}) {
         audioTracks.forEach((track) => {
             track.removeEventListener?.('ended', handleTrackEnded);
         });
+        displayTracks.forEach((track) => {
+            track.removeEventListener?.('ended', handleTrackEnded);
+        });
+        displayStream.removeEventListener?.('inactive', handleTrackEnded);
         stopStreamTracks(displayStream);
+
+        if (audioContext) {
+            audioContext.close().catch(() => {});
+            audioContext = null;
+        }
+
+        analyser = null;
+        levelBuffer = null;
 
         if (error) {
             rejectDone(error);
@@ -214,13 +290,29 @@ export async function startTabAudioCapture(options = {}) {
         finish();
     };
 
-    audioTracks[0].addEventListener('ended', handleTrackEnded);
+    displayTracks.forEach((track) => {
+        track.addEventListener?.('ended', handleTrackEnded);
+    });
+    displayStream.addEventListener?.('inactive', handleTrackEnded);
 
     timerId = setInterval(() => {
         const elapsed = (performance.now() - startedAt) / 1000;
         const clamped = Math.min(elapsed, maxSeconds);
 
         onTick(clamped);
+
+        if (analyser && levelBuffer) {
+            analyser.getFloatTimeDomainData(levelBuffer);
+
+            let sum = 0;
+
+            for (let i = 0; i < levelBuffer.length; i += 1) {
+                sum += levelBuffer[i] * levelBuffer[i];
+            }
+
+            const rms = Math.sqrt(sum / levelBuffer.length);
+            onLevel(Math.min(1, rms * 4));
+        }
 
         if (elapsed >= maxSeconds) {
             stop();
@@ -234,6 +326,7 @@ export async function startTabAudioCapture(options = {}) {
     }
 
     onTick(0);
+    onLevel(0);
 
     return { stop, done };
 }

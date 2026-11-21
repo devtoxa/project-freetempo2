@@ -249,12 +249,153 @@ body,
     cursor: default;
 }
 
+.youtube-to-midi-record {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 112px;
+    font-weight: 600;
+}
+
+.youtube-to-midi-stop {
+    min-width: 112px;
+    border-color: rgba(252, 165, 165, 0.7);
+    background: #b91c1c;
+    font-weight: 600;
+    animation: youtube-rec-pulse 1.2s ease-out infinite;
+}
+
+.youtube-to-midi-stop:hover {
+    background: #dc2626;
+}
+
+.youtube-to-midi-record.is-processing {
+    border-color: rgba(147, 197, 253, 0.6);
+    background: #1d4ed8;
+}
+
+.youtube-to-midi-record.is-processing:disabled {
+    opacity: 0.85;
+}
+
+.youtube-button-spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: youtube-spin 0.7s linear infinite;
+}
+
+.youtube-recording-visual {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    margin-top: 6px;
+}
+
+.youtube-recording-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+    animation: youtube-blink 1s ease-in-out infinite;
+}
+
+.youtube-recording-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 36px;
+}
+
+.youtube-recording-bars span {
+    display: block;
+    width: 4px;
+    min-height: 6px;
+    border-radius: 2px 2px 0 0;
+    background: linear-gradient(to top, #ef4444, #fbbf24);
+    transition: height 0.12s linear;
+}
+
+.youtube-recording-progress {
+    width: 240px;
+    max-width: 100%;
+    height: 3px;
+    margin-top: 4px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.youtube-recording-progress div {
+    height: 100%;
+    background: #ef4444;
+    transition: width 0.2s linear;
+}
+
+@keyframes youtube-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes youtube-blink {
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
+
+@keyframes youtube-rec-pulse {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45);
+    }
+
+    50% {
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0);
+    }
+}
+
 .youtube-to-midi-hint {
     max-width: 280px;
     margin-top: 4px;
     color: #94a3b8;
     font-size: 11px;
     line-height: 1.4;
+}
+
+.youtube-to-midi-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-width: 300px;
+    margin-top: 6px;
+    color: #94a3b8;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.youtube-to-midi-error {
+    padding: 6px 8px;
+    border: 1px solid rgba(248, 113, 113, 0.5);
+    border-radius: 6px;
+    background: rgba(127, 29, 29, 0.25);
+    line-height: 1.4;
+}
+
+.youtube-to-midi-error-hint {
+    margin-top: 4px;
+    color: #fca5a5;
+    font-size: 11px;
 }
 
 .youtube-to-midi-title {

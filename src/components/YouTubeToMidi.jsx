@@ -7,7 +7,7 @@ import {
 } from '../audio/transcribeAudio';
 import {
     TAB_AUDIO_MAX_SECONDS,
-    isTabAudioCaptureSupported,
+    getTabAudioCaptureSupport,
     startTabAudioCapture,
 } from '../audio/tabAudioCapture';
 import { fetchYouTubeTitle, parseYouTubeUrl } from '../audio/youtubeUrl';
@@ -18,6 +18,8 @@ const BUSY_STATUSES = new Set([
     'stopping',
     'converting',
 ]);
+
+const RECORDING_BARS = [0.45, 0.8, 1, 0.6, 0.9, 0.5, 0.75, 0.35];
 
 function formatSeconds(value) {
     const total = Math.max(0, Math.round(value));
@@ -33,11 +35,12 @@ function safeFilename(filename) {
 
 export default function YouTubeToMidi() {
     const addLocalMidi = useData((state) => state.addLocalMidi);
-    const [supported] = useState(() => isTabAudioCaptureSupported());
+    const [support] = useState(() => getTabAudioCaptureSupport());
     const [url, setUrl] = useState('');
     const [videoTitle, setVideoTitle] = useState('');
     const [status, setStatus] = useState('idle');
     const [elapsed, setElapsed] = useState(0);
+    const [level, setLevel] = useState(0);
     const [progress, setProgress] = useState(0);
     const [error, setError] = useState('');
     const [result, setResult] = useState(null);
@@ -52,8 +55,21 @@ export default function YouTubeToMidi() {
         };
     }, []);
 
-    if (!supported) {
+    if (support.isMobile) {
         return null;
+    }
+
+    if (!support.supported) {
+        return (
+            <div className="YouTubeToMidi">
+                <div className="Key">[YouTube → MIDI]</div>
+                <div className="Value">
+                    <div className="youtube-to-midi-hint">
+                        {support.reason}
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     const isBusy = BUSY_STATUSES.has(status);
@@ -80,6 +96,7 @@ export default function YouTubeToMidi() {
             setResult(null);
             setProgress(0);
             setElapsed(0);
+            setLevel(0);
         }
     };
 
@@ -111,10 +128,35 @@ export default function YouTubeToMidi() {
             return;
         }
 
+        const capturePromise = startTabAudioCapture({
+            maxSeconds: TAB_AUDIO_MAX_SECONDS,
+            onTick: (value) => {
+                if (!mountedRef.current) return;
+
+                setElapsed(value);
+
+                if (value >= TAB_AUDIO_MAX_SECONDS) {
+                    setStatus('stopping');
+                }
+            },
+            onLevel: (value) => {
+                if (mountedRef.current) {
+                    setLevel(value);
+                }
+            },
+            onStop: () => {
+                if (!mountedRef.current) return;
+
+                setLevel(0);
+                setStatus('stopping');
+            },
+        });
+
         setError('');
         setResult(null);
         setProgress(0);
         setElapsed(0);
+        setLevel(0);
         setStatus('starting');
 
         if (!videoTitleRef.current) {
@@ -124,14 +166,7 @@ export default function YouTubeToMidi() {
         let controller;
 
         try {
-            controller = await startTabAudioCapture({
-                maxSeconds: TAB_AUDIO_MAX_SECONDS,
-                onTick: (value) => {
-                    if (mountedRef.current) {
-                        setElapsed(value);
-                    }
-                },
-            });
+            controller = await capturePromise;
         } catch (err) {
             if (!mountedRef.current) return;
 
@@ -233,6 +268,32 @@ export default function YouTubeToMidi() {
         anchor.remove();
     };
 
+    const progressPercent = Math.round(progress * 100);
+    const isRecording = status === 'recording';
+    const isProcessing =
+        status === 'starting' ||
+        status === 'stopping' ||
+        status === 'converting';
+    const actionDisabled =
+        !canUseLink || (isBusy && status !== 'recording');
+
+    let actionLabel = '탭 오디오 녹음';
+
+    if (status === 'starting') {
+        actionLabel = '공유 탭 선택 중…';
+    } else if (status === 'recording') {
+        actionLabel = '녹음 중지';
+    } else if (status === 'stopping') {
+        actionLabel = '녹음 완료 · 처리 중…';
+    } else if (status === 'converting') {
+        actionLabel = `처리 중… ${progressPercent}%`;
+    } else if (status === 'done') {
+        actionLabel = '다시 녹음';
+    }
+
+    const showCaptureHint =
+        /탭 오디오|오디오 공유|소리가|화면 공유|공유 창/.test(error);
+
     return (
         <div className="YouTubeToMidi">
             <div className="Key">[YouTube → MIDI]</div>
@@ -256,32 +317,98 @@ export default function YouTubeToMidi() {
                 </div>
 
                 <div className="youtube-to-midi-actions">
-                    {status === 'recording' ? (
-                        <button type="button" onClick={handleStop}>
+                    {isRecording ? (
+                        <button
+                            type="button"
+                            className="youtube-to-midi-stop"
+                            onClick={handleStop}
+                        >
                             녹음 중지
                         </button>
                     ) : (
                         <button
                             type="button"
+                            className={`youtube-to-midi-record${
+                                isProcessing ? ' is-processing' : ''
+                            }`}
                             onClick={handleCapture}
-                            disabled={isBusy || !canUseLink}
+                            disabled={actionDisabled}
+                            aria-busy={isProcessing}
                         >
-                            탭 오디오 녹음
+                            {isProcessing && (
+                                <span
+                                    className="youtube-button-spinner"
+                                    aria-hidden="true"
+                                />
+                            )}
+                            {actionLabel}
                         </button>
                     )}
-
-                    {status === 'recording' && (
-                        <span className="youtube-recording-time">
-                            {formatSeconds(elapsed)} /{' '}
-                            {formatSeconds(TAB_AUDIO_MAX_SECONDS)}
-                        </span>
-                    )}
                 </div>
+
+                {isRecording && (
+                    <>
+                        <div className="youtube-recording-visual">
+                            <span
+                                className="youtube-recording-dot"
+                                aria-hidden="true"
+                            />
+                            <div
+                                className="youtube-recording-bars"
+                                aria-hidden="true"
+                            >
+                                {RECORDING_BARS.map(
+                                    (multiplier, index) => (
+                                        <span
+                                            key={index}
+                                            style={{
+                                                height: `${Math.round(
+                                                    6 +
+                                                        level *
+                                                            30 *
+                                                            multiplier
+                                                )}px`,
+                                            }}
+                                        />
+                                    )
+                                )}
+                            </div>
+                            <span className="youtube-recording-time">
+                                {formatSeconds(elapsed)} /{' '}
+                                {formatSeconds(TAB_AUDIO_MAX_SECONDS)}
+                            </span>
+                        </div>
+
+                        <div className="youtube-recording-progress">
+                            <div
+                                style={{
+                                    width: `${Math.min(
+                                        100,
+                                        (elapsed /
+                                            TAB_AUDIO_MAX_SECONDS) *
+                                            100
+                                    )}%`,
+                                }}
+                            />
+                        </div>
+                    </>
+                )}
 
                 <div className="youtube-to-midi-hint">
-                    Chrome/Edge 데스크톱 · 공유 창에서 YouTube 탭과
-                    &apos;탭 오디오 공유&apos;를 체크하세요.
+                    Chrome/Edge 데스크톱 전용
                 </div>
+
+                {!isBusy && (
+                    <div className="youtube-to-midi-steps">
+                        <span>1. 열기 → YouTube 영상 재생</span>
+                        <span>2. 탭 오디오 녹음 클릭</span>
+                        <span>3. 공유 창의 Chrome Tab에서 YouTube 선택</span>
+                        <span>
+                            4. 왼쪽 아래 &apos;탭 오디오 공유&apos; 체크 후
+                            공유
+                        </span>
+                    </div>
+                )}
 
                 {videoTitle && !isBusy && (
                     <div className="youtube-to-midi-title">
@@ -294,11 +421,12 @@ export default function YouTubeToMidi() {
                     aria-live="polite"
                 >
                     {status === 'starting' &&
-                        '공유할 YouTube 탭을 선택하세요…'}
-                    {status === 'recording' && 'YouTube 오디오 녹음 중…'}
-                    {status === 'stopping' && '녹음 마무리 중…'}
+                        "공유 창에서 YouTube 탭과 '탭 오디오 공유'를 체크한 뒤 공유를 누르세요…"}
+                    {status === 'recording' &&
+                        `녹음 중 · ${formatSeconds(elapsed)} / ${formatSeconds(TAB_AUDIO_MAX_SECONDS)}`}
+                    {status === 'stopping' && '녹음 완료 · 처리 중…'}
                     {status === 'converting' &&
-                        `음정 분석 중… ${Math.round(progress * 100)}%`}
+                        `처리 중 · 음정 분석 ${progressPercent}%`}
                     {status === 'done' &&
                         result &&
                         `MIDI 생성 완료 · 노트 ${result.noteCount}개${
@@ -321,7 +449,9 @@ export default function YouTubeToMidi() {
 
                 {(status === 'starting' || status === 'recording') && (
                     <div className="youtube-to-midi-warning">
-                        녹음 중에는 이 메뉴를 닫지 마세요.
+                        녹음 중에는 이 메뉴를 닫지 마세요. 일찍 끝내려면
+                        Chrome 공유 표시줄의 &apos;공유 중지&apos;를
+                        누르세요.
                     </div>
                 )}
 
@@ -336,7 +466,15 @@ export default function YouTubeToMidi() {
                 )}
 
                 {error && (
-                    <div className="midi-file-error">{error}</div>
+                    <div className="midi-file-error youtube-to-midi-error">
+                        {error}
+                        {showCaptureHint && (
+                            <div className="youtube-to-midi-error-hint">
+                                공유 창 왼쪽 아래의 &apos;탭 오디오
+                                공유&apos;가 켜져 있는지 확인해 주세요.
+                            </div>
+                        )}
+                    </div>
                 )}
             </div>
         </div>
