@@ -26,7 +26,7 @@ body,
     overflow: hidden;
 }
 
-/* ?꾩껜 ?붾㈃ 湲곗? Track 罹붾쾭???덉씠??*/
+/* 전체 화면 기준 Track 캔버스 레이아웃 */
 .Track {
     position: fixed;
     inset: 0;
@@ -54,7 +54,7 @@ body,
     height: 100%;
 }
 
-/* ?붾㈃ ??媛?대뜲 ?좉? 硫붾돱 */
+/* 화면 위 가운데 토글 메뉴 */
 .top-menu-anchor {
     position: fixed;
     top: 12px;
@@ -104,7 +104,7 @@ body,
     gap: 10px;
 }
 
-/* ?몃옓 而⑦듃濡ㅻ윭 諛??꾩튂 ?щ씪?대뜑 */
+/* 트랙 컨트롤러 및 위치 슬라이더 */
 .track-controller {
     display: flex;
     align-items: center;
@@ -126,7 +126,7 @@ body,
     min-width: 160px;
 }
 
-/* ?명듃/?몃옓 蹂댁“ ?ㅽ???*/
+/* 노트/트랙 보조 스타일 */
 .track-canvas {
     position: relative;
     height: 100%;
