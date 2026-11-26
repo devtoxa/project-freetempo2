@@ -4,7 +4,8 @@
 
 **박자를 세지 말고, 음을 따라가세요.**
 
-브라우저에서 바로 즐기는 자유 박자(free tempo) 피아노 연주 · 악보 읽기 연습기
+브라우저에서 바로 즐기는 자유 박자(free tempo) 피아노 연주 · 악보 읽기 연습기 <br>
+
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vite.dev/)
 [![Tone.js](https://img.shields.io/badge/Tone.js-15-FF6B6B?style=flat-square)](https://tonejs.github.io/)
